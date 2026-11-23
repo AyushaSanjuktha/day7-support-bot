@@ -30,6 +30,11 @@ CUSTOMERS = {
     "priya.s@example.com": {"name": "Priya Sharma", "phone": "+91 99890 67890", "active": True},
 }
 REFUNDS = []
+PENDING_APPROVALS = []
+
+# Actions the AI is allowed to ask for. Risky ones need a human to approve first.
+ALLOWED_ACTIONS = {"get_order_status", "issue_refund", "delete_customer_account"}
+NEEDS_HUMAN_APPROVAL = {"delete_customer_account"}
 
 
 # ---------- Tools the LLM can use ----------
@@ -83,7 +88,13 @@ def chat():
         args = result.get("args", {})
         if args.get("customer_email") == "from_request":
             args["customer_email"] = email
-        action_result = TOOLS[action](**args)
+        if action not in ALLOWED_ACTIONS:
+            action_result = "Action not allowed"
+        elif action in NEEDS_HUMAN_APPROVAL:
+            PENDING_APPROVALS.append({"action": action, "args": args})
+            action_result = "Sent to a human agent for approval"
+        else:
+            action_result = TOOLS[action](**args)
 
     logging.info("REPLY to %s: %s", email, result["reply"])
     return jsonify({"reply": result["reply"], "action_result": action_result})
