@@ -5,14 +5,18 @@ and an action, and the app carries out the action.
 """
 import json
 import logging
+import os
 
+from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 
 from llm import call_llm
 
+load_dotenv()
+
 app = Flask(__name__)
 
-API_KEY = "sk-demo-4f9a2c71-FAKE-KEY-for-training-only"
+API_KEY = os.environ.get("LLM_API_KEY", "")
 
 logging.basicConfig(filename="logs/app.log", level=logging.INFO)
 
