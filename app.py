@@ -6,7 +6,8 @@ and an action, and the app carries out the action.
 import json
 import logging
 import os
-
+import time
+import uuid
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 
@@ -30,6 +31,8 @@ CUSTOMERS = {
     "priya.s@example.com": {"name": "Priya Sharma", "phone": "+91 99890 67890", "active": True},
 }
 REFUNDS = []
+MODEL_NAME = "fake-llm"
+PRICE_PER_TOKEN_INR = 0.0005  # made-up price for practice
 PENDING_APPROVALS = []
 
 # Actions the AI is allowed to ask for. Risky ones need a human to approve first.
@@ -77,9 +80,18 @@ def chat():
         f"Customer phone: {customer.get('phone')}\n"
         f"Customer message: {message}"
     )
-    logging.info("PROMPT: %s", prompt)
+    
 
+    request_id = uuid.uuid4().hex[:8]
+
+    start = time.perf_counter()
     text, usage = call_llm(prompt, API_KEY)
+    latency_ms = round((time.perf_counter() - start) * 1000)
+    cost_inr = round((usage["input_tokens"] + usage["output_tokens"]) * PRICE_PER_TOKEN_INR, 2)
+    logging.info(
+        "request_id=%s model=%s latency_ms=%s input_tokens=%s output_tokens=%s cost_inr=%s",
+        request_id, MODEL_NAME, latency_ms, usage["input_tokens"], usage["output_tokens"], cost_inr,
+    )
     result = json.loads(text)
 
     action = result.get("action")
@@ -96,7 +108,7 @@ def chat():
         else:
             action_result = TOOLS[action](**args)
 
-    logging.info("REPLY to %s: %s", email, result["reply"])
+    
     return jsonify({"reply": result["reply"], "action_result": action_result})
 
 
